@@ -8,8 +8,6 @@ import (
 	pflag "github.com/spf13/pflag"
 )
 
-var version = "dev"
-
 func main() {
 	// CLI flags
 	var (
@@ -64,10 +62,24 @@ func main() {
 	pflag.StringVarP(&moveDest, "movedestination", "d", "", "Move destination path")
 	pflag.BoolVar(&showVersion, "version", false, "Show version")
 
+	pflag.Usage = func() {
+		fmt.Fprintln(os.Stderr, "Usage: tvn [options] <files or directories>")
+		fmt.Fprintln(os.Stderr, "")
+		pflag.PrintDefaults()
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, "Config file locations (in order of precedence):")
+		fmt.Fprintln(os.Stderr, "  1. --config <path>")
+		fmt.Fprintln(os.Stderr, "  2. ~/.config/tvn/tvn.json")
+		fmt.Fprintln(os.Stderr, "  3. ~/.tvn.json (legacy)")
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, "Generate a default config file:")
+		fmt.Fprintln(os.Stderr, "  tvn --save=~/.config/tvn/tvn.json")
+	}
+
 	pflag.Parse()
 
 	if showVersion {
-		fmt.Printf("tvn %s\n", version)
+		fmt.Printf("tvn %s\n", Version)
 		os.Exit(0)
 	}
 
@@ -176,8 +188,7 @@ func main() {
 	// Remaining args are files/directories
 	args := pflag.Args()
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "Usage: tvn [options] <files or directories>")
-		pflag.PrintDefaults()
+		pflag.Usage()
 		os.Exit(1)
 	}
 

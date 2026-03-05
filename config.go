@@ -133,11 +133,11 @@ func FindConfigFile() string {
 	if err != nil {
 		return ""
 	}
-	xdg := filepath.Join(home, ".config", "tvnamer", "tvnamer.json")
+	xdg := filepath.Join(home, ".config", "tvn", "tvn.json")
 	if _, err := os.Stat(xdg); err == nil {
 		return xdg
 	}
-	legacy := filepath.Join(home, ".tvnamer.json")
+	legacy := filepath.Join(home, ".tvn.json")
 	if _, err := os.Stat(legacy); err == nil {
 		return legacy
 	}

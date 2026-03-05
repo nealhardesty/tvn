@@ -4,13 +4,13 @@
 
 ### 1.1 Product Summary
 
-**tvnamer** is a command-line utility that automatically renames TV episode files from common download formats (e.g., `some.show.s01e03.blah.abc.avi`) to human-readable, consistent formats (e.g., `Some Show - [01x03] - The Episode Name.avi`) by retrieving episode metadata from [TheTVDB.com](https://thetvdb.com).
+**tvn** is a command-line utility that automatically renames TV episode files from common download formats (e.g., `some.show.s01e03.blah.abc.avi`) to human-readable, consistent formats (e.g., `Some Show - [01x03] - The Episode Name.avi`) by retrieving episode metadata from [TheTVDB.com](https://thetvdb.com).
 
 This is a Go reimplementation of the original Python [tvnamer](https://github.com/dbr/tvnamer) project.
 
 **License:** Unlicense
 
-**Note:** TV information is provided by TheTVDB.com. tvnamer is not endorsed or certified by TheTVDB.com or its affiliates.
+**Note:** TV information is provided by TheTVDB.com. tvn is not endorsed or certified by TheTVDB.com or its affiliates.
 
 ---
 
@@ -44,7 +44,7 @@ This is a Go reimplementation of the original Python [tvnamer](https://github.co
 
 ### 2.2 Input Filename Formats Supported
 
-tvnamer supports a comprehensive set of filename patterns, including:
+tvn supports a comprehensive set of filename patterns, including:
 
 | Format Type | Example |
 |-------------|---------|
@@ -92,7 +92,7 @@ tvnamer supports a comprehensive set of filename patterns, including:
 ### 4.1 Usage
 
 ```
-tvnamer [options] <files or directories>
+tvn [options] <files or directories>
 ```
 
 CLI argument parsing should use a Go flag library (e.g., `pflag`, `cobra`, or the standard `flag` package with POSIX-style support).
@@ -158,15 +158,15 @@ CLI argument parsing should use a Go flag library (e.g., `pflag`, `cobra`, or th
 | Location | Priority |
 |----------|----------|
 | `--config <path>` | Highest (CLI override) |
-| `~/.config/tvnamer/tvnamer.json` | Default |
-| `~/.tvnamer.json` | Legacy (deprecated) |
+| `~/.config/tvn/tvn.json` | Default |
+| `~/.tvn.json` | Legacy (deprecated) |
 
 Config is JSON. Deserialized into a Go struct with `json` tags. Unknown fields should be ignored (forward compatibility).
 
 ### 5.2 Generate Default Config
 
 ```bash
-tvnamer --save=./mytvnamerconfig.json
+tvn --save=./mytvnconfig.json
 ```
 
 ### 5.3 Configuration Reference
@@ -347,12 +347,12 @@ The Go version calls TheTVDB's REST API directly using `net/http` and `encoding/
 
 ### 9.2 API Key
 
-- Default key provided for tvnamer
+- Default key provided for tvn
 - Custom key via `tvdb_api_key` (register at [TheTVDB](https://thetvdb.com/api-information))
 
 ### 9.3 Test Mode
 
-- `TVNAMER_TEST_MODE=1` uses cached test data for CI (HTTP responses cached as fixtures)
+- `TVN_TEST_MODE=1` uses cached test data for CI (HTTP responses cached as fixtures)
 
 ### 9.4 Go-Specific Design Notes
 

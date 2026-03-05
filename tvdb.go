@@ -64,7 +64,7 @@ func NewTVDBClient(cfg *Config) *TVDBClient {
 		apiKey:       apiKey,
 		baseURL:      tvdbBaseURL,
 		client:       &http.Client{},
-		testMode:     os.Getenv("TVNAMER_TEST_MODE") == "1",
+		testMode:     os.Getenv("TVN_TEST_MODE") == "1",
 		episodeCache: make(map[int][]Episode),
 	}
 }

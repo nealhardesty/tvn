@@ -116,13 +116,13 @@ tvn -m -d "/media/tv/{{.SeriesName}}/Season {{.SeasonNumber}}/" *.mkv
 tvn looks for config files in this order:
 
 1. Path specified with `--config`
-2. `~/.config/tvnamer/tvnamer.json`
-3. `~/.tvnamer.json` (legacy)
+2. `~/.config/tvn/tvn.json`
+3. `~/.tvn.json` (legacy)
 
 Generate a default config file:
 
 ```bash
-tvn --save=./tvnamer.json
+tvn --save=~/.config/tvn/tvn.json
 ```
 
 See [PRD.md](PRD.md) for the full configuration reference.
