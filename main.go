@@ -67,7 +67,7 @@ func main() {
 	pflag.Parse()
 
 	if showVersion {
-		fmt.Printf("tvnamer %s\n", version)
+		fmt.Printf("tvn %s\n", version)
 		os.Exit(0)
 	}
 
@@ -176,7 +176,7 @@ func main() {
 	// Remaining args are files/directories
 	args := pflag.Args()
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "Usage: tvnamer [options] <files or directories>")
+		fmt.Fprintln(os.Stderr, "Usage: tvn [options] <files or directories>")
 		pflag.PrintDefaults()
 		os.Exit(1)
 	}
