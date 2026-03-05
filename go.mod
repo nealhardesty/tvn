@@ -1,4 +1,4 @@
-module tvn
+module github.com/nealhardesty/tvn
 
 go 1.22
 
