@@ -1,0 +1,9 @@
+[
+  {"id": 101, "name": "Pilot", "seasonNumber": 1, "number": 1, "aired": "2020-01-01"},
+  {"id": 102, "name": "Second Episode", "seasonNumber": 1, "number": 2, "aired": "2020-01-08"},
+  {"id": 103, "name": "The Episode Name", "seasonNumber": 1, "number": 3, "aired": "2020-01-15"},
+  {"id": 104, "name": "Fourth Episode", "seasonNumber": 1, "number": 4, "aired": "2020-01-22"},
+  {"id": 105, "name": "Fifth Episode", "seasonNumber": 1, "number": 5, "aired": "2020-01-29"},
+  {"id": 201, "name": "Season Two Premiere", "seasonNumber": 2, "number": 1, "aired": "2020-09-01"},
+  {"id": 202, "name": "Second Season Ep 2", "seasonNumber": 2, "number": 2, "aired": "2020-09-08"}
+]
