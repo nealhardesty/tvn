@@ -16,6 +16,11 @@ import (
 
 const tvdbBaseURL = "https://api4.thetvdb.com/v4"
 
+// defaultTVDBApiKey is a project-registered TVDB v4 API key bundled with tvn
+// so users don't need to register their own. Users can override it via the
+// tvdb_api_key field in their config file. Register at: https://thetvdb.com/api-information
+const defaultTVDBApiKey = "199be9e3-44a0-4422-b2c6-997731772aea"
+
 // SeriesSearchResult represents a series from TVDB search.
 type SeriesSearchResult struct {
 	TVDBID          int
@@ -50,7 +55,7 @@ type TVDBClient struct {
 
 // NewTVDBClient creates a new TVDB API client.
 func NewTVDBClient(cfg *Config) *TVDBClient {
-	apiKey := ""
+	apiKey := defaultTVDBApiKey
 	if cfg.TVDBApiKey != nil {
 		apiKey = *cfg.TVDBApiKey
 	}
@@ -71,7 +76,7 @@ func (c *TVDBClient) Login() error {
 		return nil
 	}
 	if c.apiKey == "" {
-		return fmt.Errorf("TVDB API key not configured. Set tvdb_api_key in config or use --config")
+		return fmt.Errorf("TVDB API key not configured; set tvdb_api_key in your config file (register at https://thetvdb.com/api-information)")
 	}
 
 	body, _ := json.Marshal(map[string]string{"apikey": c.apiKey})
