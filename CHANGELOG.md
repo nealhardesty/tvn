@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.15] - 2026-03-07
+
+### Fixed
+- Strip year-in-parens (e.g. `(2025)`) from parsed series name before TVDB search, preventing garbage matches when filenames include the year
+- Always prompt for series selection unless `--select-first` or `--batch` is set; previously a single TVDB result was silently auto-selected, which could pick the wrong show without any user confirmation
+
 ## [0.1.12] - 2026-03-07
 
 ### Changed

@@ -115,7 +115,7 @@ func ProcessFiles(cfg *Config, files []string, tvdb *TVDBClient) error {
 					continue
 				}
 
-				if len(results) == 1 || cfg.SelectFirst || cfg.Batch {
+				if cfg.SelectFirst || cfg.Batch {
 					info.series = &results[0]
 				} else {
 					selected, err := PromptSeriesSelection(results, filename)

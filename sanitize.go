@@ -10,8 +10,11 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
+// yearInParens matches a 4-digit year in parentheses, e.g. "(2025)".
+var yearInParens = regexp.MustCompile(`\(\d{4}\)`)
+
 // cleanSeriesName converts parsed series name to a clean form.
-// Replaces dots, underscores with spaces, trims, and title-cases.
+// Replaces dots, underscores with spaces, strips year-in-parens, trims, and title-cases.
 func cleanSeriesName(name string) string {
 	name = strings.Map(func(r rune) rune {
 		switch r {
@@ -20,6 +23,8 @@ func cleanSeriesName(name string) string {
 		}
 		return r
 	}, name)
+	// Strip year-in-parens like "(2025)" that appear in many download filenames
+	name = yearInParens.ReplaceAllString(name, "")
 	space := regexp.MustCompile(`\s+`)
 	name = space.ReplaceAllString(name, " ")
 	name = strings.TrimSpace(name)
