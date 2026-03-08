@@ -30,12 +30,11 @@ func ProcessFiles(cfg *Config, files []string, tvdb *TVDBClient) error {
 
 	// Cache for series lookups
 	type seriesInfo struct {
-		series   *SeriesSearchResult
-		episodes []Episode
+		series      *SeriesSearchResult
+		episodes    []Episode
+		alwaysRename bool
 	}
 	seriesCache := make(map[string]*seriesInfo)
-
-	alwaysRename := cfg.AlwaysRename || cfg.Batch
 
 	for _, filePath := range allFiles {
 		filename := filepath.Base(filePath)
@@ -81,7 +80,7 @@ func ProcessFiles(cfg *Config, files []string, tvdb *TVDBClient) error {
 		cacheKey := strings.ToLower(lookupName)
 		info, cached := seriesCache[cacheKey]
 		if !cached {
-			info = &seriesInfo{}
+			info = &seriesInfo{alwaysRename: cfg.AlwaysRename || cfg.Batch}
 
 			if cfg.SeriesID != nil {
 				// Use provided series ID
@@ -119,7 +118,7 @@ func ProcessFiles(cfg *Config, files []string, tvdb *TVDBClient) error {
 				if len(results) == 1 || cfg.SelectFirst || cfg.Batch {
 					info.series = &results[0]
 				} else {
-					selected, err := PromptSeriesSelection(results)
+					selected, err := PromptSeriesSelection(results, filename)
 					if err != nil {
 						return err
 					}
@@ -195,9 +194,7 @@ func ProcessFiles(cfg *Config, files []string, tvdb *TVDBClient) error {
 
 		// Check if rename is needed
 		if newFilename == filename {
-			if cfg.Verbose {
-				fmt.Printf("# Already named correctly: %s\n", filename)
-			}
+			fmt.Printf("%s is already correct\n", filename)
 			continue
 		}
 
@@ -209,13 +206,13 @@ func ProcessFiles(cfg *Config, files []string, tvdb *TVDBClient) error {
 		}
 
 		// Prompt for rename
-		if !alwaysRename {
+		if !info.alwaysRename {
 			action := PromptRename(filename, newFilename)
 			switch action {
 			case RenameNo:
 				continue
 			case RenameAlways:
-				alwaysRename = true
+				info.alwaysRename = true
 			case RenameQuit:
 				return nil
 			case RenameYes:
@@ -261,7 +258,7 @@ func ProcessFiles(cfg *Config, files []string, tvdb *TVDBClient) error {
 			}
 
 			doMove := true
-			if cfg.MoveFilesConfirmation && !alwaysRename {
+			if cfg.MoveFilesConfirmation && !info.alwaysRename {
 				action := PromptMove(filePath, moveDest)
 				switch action {
 				case MoveNo:

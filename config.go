@@ -122,8 +122,13 @@ func DefaultConfig() Config {
 		MultiepJoinNameWith: ", ",
 		MultiepFormat:       `{{.EpName}} ({{.EpisodeMin}}-{{.EpisodeMax}})`,
 
-		InputSeriesReplacements:  map[string]string{},
-		OutputSeriesReplacements: map[string]string{},
+		ValidExtensions:               []string{},
+		FilenameBlacklist:             []string{},
+		InputFilenameReplacements:     []Replacement{},
+		OutputFilenameReplacements:    []Replacement{},
+		MoveFilesFullpathReplacements: []Replacement{},
+		InputSeriesReplacements:       map[string]string{},
+		OutputSeriesReplacements:      map[string]string{},
 	}
 }
 

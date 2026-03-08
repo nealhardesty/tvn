@@ -23,7 +23,7 @@ lint: fmt vet
 clean:
 	rm -f $(BINARY)
 
-install:
+install: build
 	go install $(LDFLAGS) .
 
 # Bump patch version in version.go, commit everything, tag, and push.

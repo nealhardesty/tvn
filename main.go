@@ -4,9 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	pflag "github.com/spf13/pflag"
 )
+
+// expandPath expands a leading ~ to the user's home directory.
+func expandPath(path string) string {
+	if !strings.HasPrefix(path, "~") {
+		return path
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	return home + path[1:]
+}
 
 func main() {
 	// CLI flags
@@ -77,6 +90,11 @@ func main() {
 	}
 
 	pflag.Parse()
+
+	// Expand ~ in path arguments since shell doesn't expand it in --flag=~/path form
+	configPath = expandPath(configPath)
+	savePath = expandPath(savePath)
+	moveDest = expandPath(moveDest)
 
 	if showVersion {
 		fmt.Printf("tvn %s\n", Version)

@@ -1,0 +1,352 @@
+Diff:
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+new file mode 100644
+index 0000000..7a42b17
+--- /dev/null
++++ b/CHANGELOG.md
+@@ -0,0 +1,54 @@
++# Changelog
++
++## [0.1.9] - 2026-03-07
++
++### Fixed
++- "Always rename" (selecting 'a') is now scoped per-series; it no longer carries over to files from a different series
++
++## [0.1.8] - 2026-03-07
++
++### Changed
++- TVDB search results header now shows the source filename in parens for context
++
++## [0.1.7] - 2026-03-07
++
++### Changed
++- Print "<filename> is already correct" when no rename is needed (previously only shown with --verbose)
++
++## [0.1.6] - 2026-03-07
++
++### Changed
++- All interactive prompts now accept Enter as a default: series selection defaults to item 1, rename and move prompts default to yes (`[Y/n/...]`)
++
++## [0.1.5] - 2026-03-07
++
++### Fixed
++- Filename templates from tvnamer-style configs using Python `%(key)s` placeholders now render correctly. The formatter converts them to Go template syntax before execution, so existing tvnamer config files work without modification.
++
++## [0.1.4] - 2026-03-07
++
++### Changed
++- Cap series selection list to 10 items when TVDB returns more results
++
++## [0.1.3] - 2026-03-06
++
++### Changed
++- Bumped patch version
++
++## [0.1.2] - 2026-03-06
++
++### Changed
++- Bumped patch version
++
++## [0.1.1] - 2026-03-06
++
++### Changed
++- Renamed project to 'tvn'
++- Refactored version management into version.go
++
++## [0.1.0] - 2026-03-06
++
++### Added
++- Initial release
++- TVDB series search and episode renaming
++- Default TVDB API key for easier setup
+diff --git a/Makefile b/Makefile
+index a94b8ee..c8cf9ea 100644
+--- a/Makefile
++++ b/Makefile
+@@ -23,7 +23,7 @@ lint: fmt vet
+ clean:
+ 	rm -f $(BINARY)
+ 
+-install:
++install: build
+ 	go install $(LDFLAGS) .
+ 
+ # Bump patch version in version.go, commit everything, tag, and push.
+diff --git a/config.go b/config.go
+index 320acd5..5ce3da0 100644
+--- a/config.go
++++ b/config.go
+@@ -122,8 +122,13 @@ func DefaultConfig() Config {
+ 		MultiepJoinNameWith: ", ",
+ 		MultiepFormat:       `{{.EpName}} ({{.EpisodeMin}}-{{.EpisodeMax}})`,
+ 
+-		InputSeriesReplacements:  map[string]string{},
+-		OutputSeriesReplacements: map[string]string{},
++		ValidExtensions:               []string{},
++		FilenameBlacklist:             []string{},
++		InputFilenameReplacements:     []Replacement{},
++		OutputFilenameReplacements:    []Replacement{},
++		MoveFilesFullpathReplacements: []Replacement{},
++		InputSeriesReplacements:       map[string]string{},
++		OutputSeriesReplacements:      map[string]string{},
+ 	}
+ }
+ 
+diff --git a/formatter.go b/formatter.go
+index bf18612..07c9839 100644
+--- a/formatter.go
++++ b/formatter.go
+@@ -3,10 +3,43 @@ package main
+ import (
+ 	"bytes"
+ 	"fmt"
++	"regexp"
+ 	"strings"
+ 	"text/template"
+ )
+ 
++// pyFmtRe matches Python-style %(key)s / %(key)02d format placeholders.
++var pyFmtRe = regexp.MustCompile(`%\((\w+)\)(?:[0-9]*[a-zA-Z])?`)
++
++// pyKeyField maps tvnamer Python config keys to Go EpisodeData field names.
++var pyKeyField = map[string]string{
++	"seriesname":   "SeriesName",
++	"seasonnumber": "SeasonNumber",
++	"episode":      "Episode",
++	"episodename":  "EpisodeName",
++	"ext":          "Ext",
++	"group":        "Group",
++	"crc":          "CRC",
++	"episodemin":   "EpisodeMin",
++	"episodemax":   "EpisodeMax",
++	"epname":       "EpName",
++}
++
++// convertPyFormat converts Python-style %(key)s placeholders to Go {{.Field}} syntax.
++// This allows tvnamer-compatible config files to work without modification.
++func convertPyFormat(s string) string {
++	return pyFmtRe.ReplaceAllStringFunc(s, func(match string) string {
++		sub := pyFmtRe.FindStringSubmatch(match)
++		if len(sub) < 2 {
++			return match
++		}
++		if field, ok := pyKeyField[sub[1]]; ok {
++			return "{{." + field + "}}"
++		}
++		return match
++	})
++}
++
+ // EpisodeData is the data passed to output filename templates.
+ type EpisodeData struct {
+ 	SeriesName       string
+@@ -46,7 +79,7 @@ func FormatFilename(cfg *Config, parsed *ParseResult, seriesName string, episode
+ 		data.Episode = data.Year + "-" + data.Month + "-" + data.Day
+ 	}
+ 
+-	tmpl, err := template.New("filename").Parse(tmplStr)
++	tmpl, err := template.New("filename").Parse(convertPyFormat(tmplStr))
+ 	if err != nil {
+ 		return "", fmt.Errorf("parsing template %q: %w", tmplStr, err)
+ 	}
+@@ -133,7 +166,7 @@ func formatEpisodeName(cfg *Config, parsed *ParseResult, names []string) string
+ 		epMin := fmt.Sprintf(cfg.EpisodeSingle, parsed.EpisodeNumbers[0])
+ 		epMax := fmt.Sprintf(cfg.EpisodeSingle, parsed.EpisodeNumbers[len(parsed.EpisodeNumbers)-1])
+ 
+-		tmpl, err := template.New("multiep").Parse(cfg.MultiepFormat)
++		tmpl, err := template.New("multiep").Parse(convertPyFormat(cfg.MultiepFormat))
+ 		if err != nil {
+ 			return names[0]
+ 		}
+diff --git a/main.go b/main.go
+index 725ff94..ac19aff 100644
+--- a/main.go
++++ b/main.go
+@@ -4,10 +4,23 @@ import (
+ 	"encoding/json"
+ 	"fmt"
+ 	"os"
++	"strings"
+ 
+ 	pflag "github.com/spf13/pflag"
+ )
+ 
++// expandPath expands a leading ~ to the user's home directory.
++func expandPath(path string) string {
++	if !strings.HasPrefix(path, "~") {
++		return path
++	}
++	home, err := os.UserHomeDir()
++	if err != nil {
++		return path
++	}
++	return home + path[1:]
++}
++
+ func main() {
+ 	// CLI flags
+ 	var (
+@@ -78,6 +91,11 @@ func main() {
+ 
+ 	pflag.Parse()
+ 
++	// Expand ~ in path arguments since shell doesn't expand it in --flag=~/path form
++	configPath = expandPath(configPath)
++	savePath = expandPath(savePath)
++	moveDest = expandPath(moveDest)
++
+ 	if showVersion {
+ 		fmt.Printf("tvn %s\n", Version)
+ 		os.Exit(0)
+diff --git a/tvnamer.go b/tvnamer.go
+index 03f254a..ea69388 100644
+--- a/tvnamer.go
++++ b/tvnamer.go
+@@ -30,13 +30,12 @@ func ProcessFiles(cfg *Config, files []string, tvdb *TVDBClient) error {
+ 
+ 	// Cache for series lookups
+ 	type seriesInfo struct {
+-		series   *SeriesSearchResult
+-		episodes []Episode
++		series      *SeriesSearchResult
++		episodes    []Episode
++		alwaysRename bool
+ 	}
+ 	seriesCache := make(map[string]*seriesInfo)
+ 
+-	alwaysRename := cfg.AlwaysRename || cfg.Batch
+-
+ 	for _, filePath := range allFiles {
+ 		filename := filepath.Base(filePath)
+ 		dir := filepath.Dir(filePath)
+@@ -81,7 +80,7 @@ func ProcessFiles(cfg *Config, files []string, tvdb *TVDBClient) error {
+ 		cacheKey := strings.ToLower(lookupName)
+ 		info, cached := seriesCache[cacheKey]
+ 		if !cached {
+-			info = &seriesInfo{}
++			info = &seriesInfo{alwaysRename: cfg.AlwaysRename || cfg.Batch}
+ 
+ 			if cfg.SeriesID != nil {
+ 				// Use provided series ID
+@@ -119,7 +118,7 @@ func ProcessFiles(cfg *Config, files []string, tvdb *TVDBClient) error {
+ 				if len(results) == 1 || cfg.SelectFirst || cfg.Batch {
+ 					info.series = &results[0]
+ 				} else {
+-					selected, err := PromptSeriesSelection(results)
++					selected, err := PromptSeriesSelection(results, filename)
+ 					if err != nil {
+ 						return err
+ 					}
+@@ -195,9 +194,7 @@ func ProcessFiles(cfg *Config, files []string, tvdb *TVDBClient) error {
+ 
+ 		// Check if rename is needed
+ 		if newFilename == filename {
+-			if cfg.Verbose {
+-				fmt.Printf("# Already named correctly: %s\n", filename)
+-			}
++			fmt.Printf("%s is already correct\n", filename)
+ 			continue
+ 		}
+ 
+@@ -209,13 +206,13 @@ func ProcessFiles(cfg *Config, files []string, tvdb *TVDBClient) error {
+ 		}
+ 
+ 		// Prompt for rename
+-		if !alwaysRename {
++		if !info.alwaysRename {
+ 			action := PromptRename(filename, newFilename)
+ 			switch action {
+ 			case RenameNo:
+ 				continue
+ 			case RenameAlways:
+-				alwaysRename = true
++				info.alwaysRename = true
+ 			case RenameQuit:
+ 				return nil
+ 			case RenameYes:
+@@ -261,7 +258,7 @@ func ProcessFiles(cfg *Config, files []string, tvdb *TVDBClient) error {
+ 			}
+ 
+ 			doMove := true
+-			if cfg.MoveFilesConfirmation && !alwaysRename {
++			if cfg.MoveFilesConfirmation && !info.alwaysRename {
+ 				action := PromptMove(filePath, moveDest)
+ 				switch action {
+ 				case MoveNo:
+diff --git a/ui.go b/ui.go
+index fc985a8..b3386cb 100644
+--- a/ui.go
++++ b/ui.go
+@@ -12,8 +12,11 @@ var stdinReader = bufio.NewReader(os.Stdin)
+ 
+ // PromptSeriesSelection asks the user to pick a series from results.
+ // Returns the selected series, or nil if user quits.
+-func PromptSeriesSelection(results []SeriesSearchResult) (*SeriesSearchResult, error) {
+-	fmt.Println("TVDB Search Results:")
++func PromptSeriesSelection(results []SeriesSearchResult, filename string) (*SeriesSearchResult, error) {
++	if len(results) > 10 {
++		results = results[:10]
++	}
++	fmt.Printf("TVDB Search Results (%s):\n", filename)
+ 	for i, r := range results {
+ 		lang := r.PrimaryLanguage
+ 		if lang == "" {
+@@ -26,12 +29,15 @@ func PromptSeriesSelection(results []SeriesSearchResult) (*SeriesSearchResult, e
+ 		fmt.Printf(" %d -> %s [%s] (%s)\n", i+1, r.Name, lang, year)
+ 	}
+ 	for {
+-		fmt.Printf("Enter choice (1-%d, q to quit): ", len(results))
++		fmt.Printf("Enter choice (1-%d, q to quit) [default: 1]: ", len(results))
+ 		line, err := stdinReader.ReadString('\n')
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 		line = strings.TrimSpace(line)
++		if line == "" {
++			return &results[0], nil
++		}
+ 		if line == "q" || line == "Q" {
+ 			return nil, nil
+ 		}
+@@ -59,13 +65,13 @@ func PromptRename(oldName, newName string) RenameAction {
+ 	fmt.Printf("Old filename: %s\n", oldName)
+ 	fmt.Printf("New filename: %s\n", newName)
+ 	for {
+-		fmt.Print("Rename? (y/n/a/q): ")
++		fmt.Print("Rename? [Y/n/a/q]: ")
+ 		line, err := stdinReader.ReadString('\n')
+ 		if err != nil {
+ 			return RenameQuit
+ 		}
+ 		switch strings.TrimSpace(strings.ToLower(line)) {
+-		case "y", "yes":
++		case "", "y", "yes":
+ 			return RenameYes
+ 		case "n", "no":
+ 			return RenameNo
+@@ -92,13 +98,13 @@ const (
+ func PromptMove(src, dst string) MoveAction {
+ 	fmt.Printf("Move to: %s\n", dst)
+ 	for {
+-		fmt.Print("Move? (y/n/q): ")
++		fmt.Print("Move? [Y/n/q]: ")
+ 		line, err := stdinReader.ReadString('\n')
+ 		if err != nil {
+ 			return MoveQuit
+ 		}
+ 		switch strings.TrimSpace(strings.ToLower(line)) {
+-		case "y", "yes":
++		case "", "y", "yes":
+ 			return MoveYes
+ 		case "n", "no":
+ 			return MoveNo
+diff --git a/version.go b/version.go
+index e8e3ade..e44e791 100644
+--- a/version.go
++++ b/version.go
+@@ -1,4 +1,4 @@
+ package main
+ 
+ // Version is the current semantic version of tvn.
+-var Version = "0.1.3"
++var Version = "0.1.10"

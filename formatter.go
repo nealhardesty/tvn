@@ -3,9 +3,42 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"strings"
 	"text/template"
 )
+
+// pyFmtRe matches Python-style %(key)s / %(key)02d format placeholders.
+var pyFmtRe = regexp.MustCompile(`%\((\w+)\)(?:[0-9]*[a-zA-Z])?`)
+
+// pyKeyField maps tvnamer Python config keys to Go EpisodeData field names.
+var pyKeyField = map[string]string{
+	"seriesname":   "SeriesName",
+	"seasonnumber": "SeasonNumber",
+	"episode":      "Episode",
+	"episodename":  "EpisodeName",
+	"ext":          "Ext",
+	"group":        "Group",
+	"crc":          "CRC",
+	"episodemin":   "EpisodeMin",
+	"episodemax":   "EpisodeMax",
+	"epname":       "EpName",
+}
+
+// convertPyFormat converts Python-style %(key)s placeholders to Go {{.Field}} syntax.
+// This allows tvnamer-compatible config files to work without modification.
+func convertPyFormat(s string) string {
+	return pyFmtRe.ReplaceAllStringFunc(s, func(match string) string {
+		sub := pyFmtRe.FindStringSubmatch(match)
+		if len(sub) < 2 {
+			return match
+		}
+		if field, ok := pyKeyField[sub[1]]; ok {
+			return "{{." + field + "}}"
+		}
+		return match
+	})
+}
 
 // EpisodeData is the data passed to output filename templates.
 type EpisodeData struct {
@@ -46,7 +79,7 @@ func FormatFilename(cfg *Config, parsed *ParseResult, seriesName string, episode
 		data.Episode = data.Year + "-" + data.Month + "-" + data.Day
 	}
 
-	tmpl, err := template.New("filename").Parse(tmplStr)
+	tmpl, err := template.New("filename").Parse(convertPyFormat(tmplStr))
 	if err != nil {
 		return "", fmt.Errorf("parsing template %q: %w", tmplStr, err)
 	}
@@ -133,7 +166,7 @@ func formatEpisodeName(cfg *Config, parsed *ParseResult, names []string) string 
 		epMin := fmt.Sprintf(cfg.EpisodeSingle, parsed.EpisodeNumbers[0])
 		epMax := fmt.Sprintf(cfg.EpisodeSingle, parsed.EpisodeNumbers[len(parsed.EpisodeNumbers)-1])
 
-		tmpl, err := template.New("multiep").Parse(cfg.MultiepFormat)
+		tmpl, err := template.New("multiep").Parse(convertPyFormat(cfg.MultiepFormat))
 		if err != nil {
 			return names[0]
 		}

@@ -12,8 +12,11 @@ var stdinReader = bufio.NewReader(os.Stdin)
 
 // PromptSeriesSelection asks the user to pick a series from results.
 // Returns the selected series, or nil if user quits.
-func PromptSeriesSelection(results []SeriesSearchResult) (*SeriesSearchResult, error) {
-	fmt.Println("TVDB Search Results:")
+func PromptSeriesSelection(results []SeriesSearchResult, filename string) (*SeriesSearchResult, error) {
+	if len(results) > 10 {
+		results = results[:10]
+	}
+	fmt.Printf("TVDB Search Results (%s):\n", filename)
 	for i, r := range results {
 		lang := r.PrimaryLanguage
 		if lang == "" {
@@ -26,12 +29,15 @@ func PromptSeriesSelection(results []SeriesSearchResult) (*SeriesSearchResult, e
 		fmt.Printf(" %d -> %s [%s] (%s)\n", i+1, r.Name, lang, year)
 	}
 	for {
-		fmt.Printf("Enter choice (1-%d, q to quit): ", len(results))
+		fmt.Printf("Enter choice (1-%d, q to quit) [default: 1]: ", len(results))
 		line, err := stdinReader.ReadString('\n')
 		if err != nil {
 			return nil, err
 		}
 		line = strings.TrimSpace(line)
+		if line == "" {
+			return &results[0], nil
+		}
 		if line == "q" || line == "Q" {
 			return nil, nil
 		}
@@ -59,13 +65,13 @@ func PromptRename(oldName, newName string) RenameAction {
 	fmt.Printf("Old filename: %s\n", oldName)
 	fmt.Printf("New filename: %s\n", newName)
 	for {
-		fmt.Print("Rename? (y/n/a/q): ")
+		fmt.Print("Rename? [Y/n/a/q]: ")
 		line, err := stdinReader.ReadString('\n')
 		if err != nil {
 			return RenameQuit
 		}
 		switch strings.TrimSpace(strings.ToLower(line)) {
-		case "y", "yes":
+		case "", "y", "yes":
 			return RenameYes
 		case "n", "no":
 			return RenameNo
@@ -92,13 +98,13 @@ const (
 func PromptMove(src, dst string) MoveAction {
 	fmt.Printf("Move to: %s\n", dst)
 	for {
-		fmt.Print("Move? (y/n/q): ")
+		fmt.Print("Move? [Y/n/q]: ")
 		line, err := stdinReader.ReadString('\n')
 		if err != nil {
 			return MoveQuit
 		}
 		switch strings.TrimSpace(strings.ToLower(line)) {
-		case "y", "yes":
+		case "", "y", "yes":
 			return MoveYes
 		case "n", "no":
 			return MoveNo
