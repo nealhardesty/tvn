@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.12] - 2026-03-07
+
+### Changed
+- Updated `DefaultConfig()` to match user-preferred defaults: episode separator `"E"`, normalize unicode filenames enabled, `replace_invalid_characters_with` empty string, default `output_filename_replacements` (spaces→dots, strip special chars, `&`→`and`), and dot-separated filename templates (`SeriesName.S01E01.EpisodeName`)
+- Overhauled README.md: corrected install command module path, updated example output format to reflect new defaults, documented all CLI flags (including `--not-*` variants), added full configuration reference table, documented template variables, move file options, episode formatting, and `TVN_TEST_MODE` environment variable
+
 ## [0.1.9] - 2026-03-07
 
 ### Fixed
