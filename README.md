@@ -4,20 +4,22 @@ A command-line utility that automatically renames TV episode files by fetching m
 
 Go reimplementation of the Python [tvnamer](https://github.com/dbr/tvnamer) project. Config files from the original tvnamer (using `%(key)s` placeholders) are supported without modification.
 
+Fork of https://github.com/nealhardesty/tvn with update for addressing CVE-2026-56852 / GO-2026-5970
+
 **Note:** TV information is provided by TheTVDB.com. tvn is not endorsed or certified by TheTVDB.com or its affiliates.
 
 ## Installation
 
-Requires Go 1.22+.
+Requires Go 1.25+.
 
 ```bash
-go install github.com/nealhardesty/tvn@latest
+go install github.com/Ost99/tvn@latest
 ```
 
 Or build from source:
 
 ```bash
-git clone https://github.com/nealhardesty/tvn.git
+git clone https://github.com/Ost99/tvn.git
 cd tvn
 make install
 ```
